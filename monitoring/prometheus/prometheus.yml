@@ -1,0 +1,17 @@
+# Шаблон: ${SHOP_TARGET} и ${ENV_NAME} подставляет entrypoint.sh из переменных окружения.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: qa-shop
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['${SHOP_TARGET}']
+        labels:
+          env: '${ENV_NAME}'
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

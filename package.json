@@ -1,0 +1,23 @@
+{
+  "name": "qa-shop-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E2E-тесты (Playwright) и мониторинг (Prometheus + Grafana) для учебного магазина «Лавка»",
+  "scripts": {
+    "app:install": "npm ci --prefix app --no-audit --no-fund",
+    "app:start": "node app/server.js",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:prod": "playwright test --project=chromium",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}
