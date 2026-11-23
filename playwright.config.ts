@@ -9,7 +9,8 @@ import path from 'node:path';
  *     (временный DATA_DIR + ALLOW_TEST_RESET=1). Полностью воспроизводимо, подходит для CI.
  *  2. BASE_URL=https://... — тесты идут против уже развёрнутого стенда, ничего не сбрасывая.
  */
-const EXTERNAL_BASE_URL = process.env.BASE_URL?.replace(/\/$/, '');
+// Пустая строка (так приходит незаполненный input в GitHub Actions) = локальный режим.
+const EXTERNAL_BASE_URL = process.env.BASE_URL?.trim().replace(/\/$/, '') || undefined;
 const PORT = Number(process.env.APP_PORT || 3100);
 const LOCAL_BASE_URL = `http://localhost:${PORT}`;
 const isCI = !!process.env.CI;

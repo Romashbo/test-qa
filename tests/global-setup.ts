@@ -12,7 +12,7 @@ export default async function globalSetup(config: FullConfig) {
     const health = await api.get('/api/health');
     if (!health.ok()) throw new Error(`Магазин недоступен: ${baseURL} → ${health.status()}`);
 
-    if (!process.env.BASE_URL) {
+    if (!process.env.BASE_URL?.trim()) {
       const reset = await api.post('/api/test/reset');
       if (!reset.ok()) {
         throw new Error('POST /api/test/reset недоступен — запустите магазин с ALLOW_TEST_RESET=1');
