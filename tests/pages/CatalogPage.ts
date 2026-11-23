@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { openRoute } from '../support/navigation';
+import { expectRerender, openRoute } from '../support/navigation';
 import { parseMoney } from '../support/money';
 
 export class CatalogPage {
@@ -39,14 +39,9 @@ export class CatalogPage {
     return card.getByRole('button', { name: 'В корзину' });
   }
 
-  /**
-   * Фильтры применяются с debounce 250 мс — ждём именно ответ API на запрос с нужными
-   * параметрами, а не фиксированный таймаут.
-   */
+  /** Фильтры применяются с debounce 250 мс — ждём перерисовки списка, а не фиксированный таймаут. */
   private async waitForList(action: () => Promise<unknown>) {
-    const response = this.page.waitForResponse((r) => r.url().includes('/api/products') && r.request().method() === 'GET');
-    await action();
-    await response;
+    await expectRerender(this.page, '#products', action);
   }
 
   async searchFor(text: string) {

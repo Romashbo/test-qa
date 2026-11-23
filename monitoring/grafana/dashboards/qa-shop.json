@@ -738,18 +738,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(shop_login_failures_total{job=\"qa-shop\"}[$__rate_interval]))",
+          "expr": "sum(increase(shop_login_failures_total{job=\"qa-shop\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "Неудачные входы",
-          "range": true
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(increase(shop_users_registered_total{job=\"qa-shop\"}[$__rate_interval]))",
-          "legendFormat": "Регистрации",
           "range": true
         }
       ]

@@ -5,9 +5,10 @@
 
 | Что | Ссылка |
 |---|---|
-| Магазин | __SHOP_URL__ |
-| Grafana (дашборд, без логина) | __GRAFANA_URL__ |
-| Метрики магазина | __SHOP_URL__/metrics |
+| Магазин | https://shop-production-2bf695f6.up.railway.app |
+| Grafana (дашборд, без логина) | https://grafana-production-72836a6a.up.railway.app |
+| Метрики магазина | https://shop-production-2bf695f6.up.railway.app/metrics |
+| Репозиторий | https://github.com/Romashbo/test-qa |
 
 ## Содержание
 
@@ -58,7 +59,7 @@ npm run test:ui              # интерактивный режим
 **Против развёрнутого стенда** (ничего не сбрасывает, тестовые данные уникальны для каждого теста):
 
 ```bash
-BASE_URL=__SHOP_URL__ npx playwright test --project=chromium
+BASE_URL=https://shop-production-2bf695f6.up.railway.app npx playwright test --project=chromium
 ```
 
 Полезное:
@@ -70,8 +71,14 @@ npx playwright test --repeat-each=3                 # проверка на фл
 npm run typecheck                                   # tsc --noEmit
 ```
 
-Результат локального прогона: **94 passed** (88 тестов в desktop Chromium + 6 смоук-тестов на мобильном вьюпорте Pixel 7);
-`--repeat-each=3` — 282/282, флаков нет.
+Результаты (88 тестов в desktop Chromium + 6 смоук-тестов на мобильном вьюпорте Pixel 7):
+
+| Где | Результат |
+|---|---|
+| Локально | 94/94; `--repeat-each=3` — 282/282 |
+| Против продакшена на Railway | 94/94; `--repeat-each=2` — 188/188 |
+
+Флаков нет. 14 тестов из `known-bugs.spec.ts` засчитываются как пройденные, потому что ожидаемо падают на текущих багах.
 
 ## Подход к тестированию
 
@@ -86,8 +93,10 @@ npm run typecheck                                   # tsc --noEmit
   только там, где это и есть предмет теста (смоук-сценарий «каталог → корзина → оформление»).
 - **Page Object Model** и локаторы по ролям и подписям (`getByRole`, `getByLabel`) — это заодно
   проверка доступности. Где это нужно, используются `data-testid`, которые есть в разметке.
-- **Без sleep.** Ожидания — web-first assertions и `waitForResponse` на конкретный запрос
-  (поиск с debounce, пересчёт корзины, расчёт доставки).
+- **Без sleep.** Ожидания — web-first assertions и `waitForResponse` на конкретный запрос.
+  Приложение рендерит через `innerHTML` уже *после* ответа API, поэтому для поиска с debounce, пересчёта корзины
+  и расчёта доставки используется `expectRerender`: старая разметка контейнера помечается, и тест ждёт её замены.
+  Без этого на сетевых задержках продакшена тесты читали устаревшие суммы — локально эта гонка не видна.
 - **JS-ошибки на странице роняют тест** (фикстура `page` собирает `pageerror`).
 - **Граничные значения** подобраны по реальным ценам каталога: корзина ровно на 3000 ₽ (порог бесплатной доставки),
   3000 ₽ после скидки, ровно 2000 ₽ для `WELCOME500`.
@@ -265,9 +274,30 @@ Railway, три сервиса в одном проекте:
 
 | Сервис | Источник | Особенности |
 |---|---|---|
-| `shop` | `app/` (`Dockerfile.railway`) | публичный домен, том `/data` для `db.json`, healthcheck `/api/health` |
+| `shop` | `app/` (`Dockerfile.railway`, задаётся переменной `RAILWAY_DOCKERFILE_PATH`) | публичный домен, том `/data` для `db.json`, healthcheck `/api/health`. Исходный `Dockerfile` Railway не принимает: `docker VOLUME ... is not supported` |
 | `prometheus` | `monitoring/prometheus/` | только приватная сеть, том `/prometheus`, `SHOP_TARGET=shop.railway.internal:3000` |
 | `grafana` | `monitoring/grafana/` | публичный домен, `PROMETHEUS_URL=http://prometheus.railway.internal:9090`, пароль админа в переменной `GF_SECURITY_ADMIN_PASSWORD` |
+
+Команды деплоя (Railway CLI):
+
+```bash
+railway init --name qa-shop
+railway add --service shop --variables PORT=3000 --variables DATA_DIR=/data \
+  --variables RAILWAY_DOCKERFILE_PATH=Dockerfile.railway
+railway add --service prometheus --variables SHOP_TARGET=shop.railway.internal:3000 --variables ENV_NAME=railway
+railway add --service grafana --variables PORT=3000 \
+  --variables PROMETHEUS_URL=http://prometheus.railway.internal:9090 --variables GF_SECURITY_ADMIN_PASSWORD=<пароль>
+railway volume -s <shop-id> add --mount-path /data
+railway volume -s <prometheus-id> add --mount-path /prometheus
+railway up app --path-as-root --service shop
+railway up monitoring/prometheus --path-as-root --service prometheus
+railway up monitoring/grafana --path-as-root --service grafana
+railway domain -s shop -p 3000 && railway domain -s grafana -p 3000
+```
+
+Все 36 запросов дашборда проверены на живом Prometheus: синтаксис корректен, данные есть.
+На продакшен-дашборде видны и найденные баги: «Активные сессии» исчисляются сотнями (BUG-06),
+а доля 5xx ненулевая — `500 unknown` от битой cookie (BUG-05).
 
 Локально весь стенд поднимается одной командой (нужен Docker):
 

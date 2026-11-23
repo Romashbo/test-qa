@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { openRoute } from '../support/navigation';
+import { expectRerender, openRoute } from '../support/navigation';
 import { readMoney } from '../support/money';
 
 export class CartPage {
@@ -43,13 +43,9 @@ export class CartPage {
     return this.row(productId).getByRole('spinbutton', { name: 'Количество' });
   }
 
-  /** Каждое действие в корзине перерисовывает страницу после ответа API — ждём его. */
+  /** Каждое действие в корзине перерисовывает всю страницу после ответа API — ждём перерисовки. */
   private async mutate(action: () => Promise<unknown>) {
-    const done = this.page.waitForResponse(
-      (r) => r.url().includes('/api/cart') && r.request().method() !== 'GET',
-    );
-    await action();
-    await done;
+    await expectRerender(this.page, '#app', action);
     await expect(this.table.or(this.empty)).toBeVisible();
   }
 

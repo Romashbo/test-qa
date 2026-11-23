@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { openRoute } from '../support/navigation';
+import { expectRerender, openRoute } from '../support/navigation';
 import { readMoney } from '../support/money';
 
 export interface RecipientForm {
@@ -59,9 +59,9 @@ export class CheckoutPage {
   }
 
   async chooseDelivery(method: 'courier' | 'pickup') {
-    const recalculated = this.page.waitForResponse((r) => r.url().includes(`/api/delivery?method=${method}`));
-    await (method === 'courier' ? this.courier : this.pickup).check();
-    await recalculated;
+    const radio = method === 'courier' ? this.courier : this.pickup;
+    if (await radio.isChecked()) return;
+    await expectRerender(this.page, '#summary', () => radio.check());
   }
 
   async fill(data: RecipientForm) {
